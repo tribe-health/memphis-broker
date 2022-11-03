@@ -2,6 +2,40 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Attach to Kubernetes Pod (Go)",
+            "type": "cloudcode.kubernetes",
+            "request": "attach",
+            "language": "Go",
+            "debugPort": 4000,
+            "podSelector": {
+                "app.kubernetes.io/name":"memphis"
+            },
+            "localRoot": "${workspaceFolder}",
+            "remoteRoot": "${workspaceFolder}"
+        },
+        
+        {
+            "name": "Kubernetes: Run/Debug",
+            "type": "cloudcode.kubernetes",
+            "request": "launch",
+            "skaffoldConfig": "${workspaceFolder}/skaffold.yaml",
+            "watch": true,
+            "cleanUp": true,
+            "portForward": true,
+            "port": 4000,
+            "program": "${workspaceFolder}/main.go",
+            "imageRegistry": "docker.io/memphisos",
+            "debug": [
+                {
+                  "image": "memphis-broker-check",
+                  "containerName": "memphis-broker",
+                  "sourceFileMap": {
+                    "${workspaceFolder}": ""
+                  }
+                }
+              ]
+            },
+        {
             "name": "Launch Package",
             "type": "go",
             "request": "launch",
