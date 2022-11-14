@@ -25,6 +25,7 @@ import SearchInput from '../../../../components/searchInput';
 import { httpRequest } from '../../../../services/http';
 import Loader from '../../../../components/loader';
 import Button from '../../../../components/button';
+import Filter from '../../../../components/filter';
 import { Context } from '../../../../hooks/store';
 import Modal from '../../../../components/modal';
 import pathDomains from '../../../../router';
@@ -70,28 +71,6 @@ function SchemaList() {
             dispatch({ type: 'SET_FILTERED_LIST', payload: state?.domainList });
         }
     }, [searchInput, state?.domainList]);
-
-    const handleRegisterToSchema = useCallback(() => {
-        state.socket?.emit('get_all_schemas_data');
-    }, [state.socket]);
-
-    useEffect(() => {
-        state.socket?.on('schemas_overview_data', (data) => {
-            dispatch({ type: 'SET_DOMAIN_LIST', payload: data });
-        });
-
-        state.socket?.on('error', (error) => {
-            // history.push(pathDomains.overview);
-        });
-
-        setTimeout(() => {
-            handleRegisterToSchema();
-        }, 1000);
-
-        return () => {
-            state.socket?.emit('deregister');
-        };
-    }, [state.socket]);
 
     const onCheckedAll = (e) => {
         setIsCheckAll(!isCheckAll);
@@ -169,7 +148,7 @@ function SchemaList() {
                         aria-haspopup="true"
                         onClick={() => onCheckedAll()}
                     />
-                    <SearchInput
+                    {/* <SearchInput
                         placeholder="Search schema"
                         colorType="navy"
                         backgroundColorType="gray-dark"
@@ -181,7 +160,7 @@ function SchemaList() {
                         iconComponent={<img src={searchIcon} alt="searchIcon" />}
                         onChange={handleSearch}
                         value={searchInput}
-                    />
+                    /> */}
                     {/* <Button
                         width="111px"
                         height="34px"
@@ -206,6 +185,7 @@ function SchemaList() {
                         aria-haspopup="true"
                         // onClick={() => addUserModalFlip(true)}
                     /> */}
+                    <Filter filterComponent="schema" height="34px" />
                     <Button
                         width="160px"
                         height="34px"

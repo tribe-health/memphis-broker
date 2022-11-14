@@ -57,14 +57,26 @@ const Filter = ({ filterComponent, height }) => {
     }, [state?.domainList]);
 
     const handleRegisterToStation = useCallback(() => {
-        state.socket?.emit('get_all_stations_data');
-    }, [state.socket]);
+        switch (filterComponent) {
+            case 'stations':
+                state.socket?.emit('get_all_stations_data');
+            case 'schema':
+                state.socket?.emit('schemas_overview_data');
+        }
+    }, [state.socket, filterComponent]);
 
     useEffect(() => {
-        state.socket?.on(`stations_overview_data`, (data) => {
-            data.sort((a, b) => new Date(b.station.creation_date) - new Date(a.station.creation_date));
-            dispatch({ type: 'SET_DOMAIN_LIST', payload: data });
-        });
+        switch (filterComponent) {
+            case 'stations':
+                state.socket?.on(`stations_overview_data`, (data) => {
+                    data.sort((a, b) => new Date(b.station.creation_date) - new Date(a.station.creation_date));
+                    dispatch({ type: 'SET_DOMAIN_LIST', payload: data });
+                });
+            case 'schema':
+                state.socket?.on('schemas_overview_data', (data) => {
+                    dispatch({ type: 'SET_DOMAIN_LIST', payload: data });
+                });
+        }
 
         state.socket?.on('error', (error) => {
             // history.push(pathDomains.overview);
@@ -77,7 +89,7 @@ const Filter = ({ filterComponent, height }) => {
         return () => {
             state.socket?.emit('deregister');
         };
-    }, [state.socket]);
+    }, [state.socket, filterComponent]);
 
     const handleSearch = (e) => {
         setSearchInput(e.target.value);
@@ -87,6 +99,12 @@ const Filter = ({ filterComponent, height }) => {
         switch (filterComponent) {
             case 'stations':
                 if (state?.route === 'stations') {
+                    getTags();
+                    getFilterData(state?.domainList);
+                }
+                return;
+            case 'schema':
+                if (state?.route === 'schemas') {
                     getTags();
                     getFilterData(state?.domainList);
                 }
@@ -108,48 +126,111 @@ const Filter = ({ filterComponent, height }) => {
         handleFilter();
     }, [searchInput, filterTerms, state?.domainList]);
 
-    const getFilterData = (stations) => {
-        filterFields.findIndex((x) => x.name === 'created') === -1 && getCreatedByFilter(stations);
-        filterFields.findIndex((x) => x.name === 'storage') === -1 && getStorageTypeFilter();
+    const getFilterData = (data) => {
+        switch (filterComponent) {
+            case 'stations':
+                getStationFilter(data);
+                return;
+            case 'schema':
+                getSchemaFilter(data);
+                return;
+        }
     };
-
-    const getCreatedByFilter = (stations) => {
-        let createdBy = [];
-        stations.forEach((item) => {
-            createdBy.push(item.station.created_by_user);
-        });
-        const created = [...new Set(createdBy)].map((user) => {
-            return {
-                name: user,
-                color: CircleLetterColor[user[0]?.toUpperCase()],
-                checked: false
-            };
-        });
-        const cratedFilter = {
-            name: 'created',
-            value: 'Created By',
-            labelType: labelType.CIRCLEDLETTER,
-            filterType: filterType.CHECKBOX,
-            fields: created
-        };
+    const getSchemaFilter = (schemas) => {
         let filteredFields = filterFields;
-        filteredFields.push(cratedFilter);
+        if (filteredFields.findIndex((x) => x.name === 'created') === -1) {
+            let createdBy = [];
+            schemas.forEach((item) => {
+                createdBy.push(item.created_by_user);
+            });
+            const created = [...new Set(createdBy)].map((user) => {
+                return {
+                    name: user,
+                    color: CircleLetterColor[user[0]?.toUpperCase()],
+                    checked: false
+                };
+            });
+            const createdByFilter = {
+                name: 'created',
+                value: 'Created By',
+                labelType: labelType.CIRCLEDLETTER,
+                filterType: filterType.CHECKBOX,
+                fields: created
+            };
+            createdByFilter.fields.length > 0 && filteredFields.push(createdByFilter);
+        }
+        if (filteredFields.findIndex((x) => x.name === 'type') === -1) {
+            const storageTypeFilter = {
+                name: 'type',
+                value: 'Type',
+                filterType: filterType.RADIOBUTTON,
+                radioValue: -1,
+                fields: [{ name: 'Protobuf' }, { name: 'Avro' }, { name: 'Json' }]
+            };
+            filteredFields.push(storageTypeFilter);
+        }
+        if (filteredFields.findIndex((x) => x.name === 'dateandtype') === -1) {
+            const dates = {
+                name: 'dateandtype',
+                value: 'Date & Time',
+                filterType: filterType.DATE,
+                fields: [
+                    { name: 'from', label: 'From' },
+                    { name: 'to', label: 'To' }
+                ]
+            };
+            filteredFields.push(dates);
+        }
+        if (filteredFields.findIndex((x) => x.name === 'usage') === -1) {
+            const usageFilter = {
+                name: 'usage',
+                value: 'Usage',
+                filterType: filterType.RADIOBUTTON,
+                radioValue: -1,
+                fields: [{ name: 'Used' }, { name: 'Not Used' }]
+            };
+            filteredFields.push(usageFilter);
+        }
         setFilterFields(filteredFields);
     };
 
-    const getStorageTypeFilter = () => {
-        const storageTypeFilter = {
-            name: 'storage',
-            value: 'Storage Type',
-            filterType: filterType.CHECKBOX,
-            labelType: '',
-            fields: [
-                { name: 'Memory', value: 'memory' },
-                { name: 'File', value: 'file' }
-            ]
-        };
+    const getStationFilter = (stations) => {
         let filteredFields = filterFields;
-        filteredFields.push(storageTypeFilter);
+        if (filteredFields.findIndex((x) => x.name === 'created') === -1) {
+            let createdBy = [];
+
+            stations.forEach((item) => {
+                createdBy.push(item.station.created_by_user);
+            });
+            const created = [...new Set(createdBy)].map((user) => {
+                return {
+                    name: user,
+                    color: CircleLetterColor[user[0]?.toUpperCase()],
+                    checked: false
+                };
+            });
+            const createdByFilter = {
+                name: 'created',
+                value: 'Created By',
+                labelType: labelType.CIRCLEDLETTER,
+                filterType: filterType.CHECKBOX,
+                fields: created
+            };
+            createdByFilter.fields.length > 0 && filteredFields.push(createdByFilter);
+        }
+        if (filteredFields.findIndex((x) => x.name === 'storage') === -1) {
+            const storageTypeFilter = {
+                name: 'storage',
+                value: 'Storage Type',
+                filterType: filterType.CHECKBOX,
+                labelType: '',
+                fields: [
+                    { name: 'Memory', value: 'memory' },
+                    { name: 'File', value: 'file' }
+                ]
+            };
+            filteredFields.push(storageTypeFilter);
+        }
         setFilterFields(filteredFields);
     };
 
@@ -188,12 +269,14 @@ const Filter = ({ filterComponent, height }) => {
     };
 
     const handleFilter = () => {
+        let objTags = [];
+        let objCreated = [];
+        let objStorage = [];
+        let objUsage = null;
+        let objType = null;
+        let data = state?.domainList;
         switch (filterComponent) {
             case 'stations':
-                let objTags = [];
-                let objCreated = [];
-                let objStorage = [];
-                let data = state?.domainList;
                 if (filterTerms?.find((o) => o.name === 'tags')) {
                     objTags = filterTerms?.find((o) => o.name === 'tags')?.fields?.map((element) => element?.toLowerCase());
                 }
@@ -215,6 +298,35 @@ const Filter = ({ filterComponent, height }) => {
                             objCreated?.length > 0 ? objCreated?.includes(item.station.created_by_user) : !objCreated?.includes(item.station.created_by_user)
                         )
                         .filter((item) => (objStorage?.length > 0 ? objStorage?.includes(item.station.storage_type) : !objStorage?.includes(item.station.storage_type)));
+                }
+                dispatch({ type: 'SET_FILTERED_LIST', payload: data });
+                return;
+            case 'schema':
+                if (filterTerms?.find((o) => o.name === 'tags')) {
+                    objTags = filterTerms?.find((o) => o.name === 'tags')?.fields?.map((element) => element?.toLowerCase());
+                }
+                if (filterTerms?.find((o) => o.name === 'created')) {
+                    objCreated = filterTerms?.find((o) => o.name === 'created')?.fields?.map((element) => element?.toLowerCase());
+                }
+                if (filterTerms?.find((o) => o.name === 'usage')) {
+                    objUsage = filterTerms?.find((o) => o.name === 'usage').fields[0] === 'Used';
+                }
+                if (filterTerms?.find((o) => o.name === 'type')) {
+                    objType = filterTerms?.find((o) => o.name === 'type').fields[0]?.toLowerCase();
+                    // objUsage = filterTerms?.find((o) => o.name === 'usage').fields[0] === 'Used';
+                }
+                // if (searchInput !== '' && searchInput?.length >= 2) {
+                //     data = data.filter((station) => station.station.name.includes(searchInput));
+                // }
+                if (objTags?.length > 0 || objCreated?.length > 0 || objStorage?.length > 0 || objUsage !== null || objType !== null) {
+                    data = data
+                        ?.filter((item) =>
+                            objTags?.length > 0 ? item.tags.some((tag) => objTags?.includes(tag.name)) : !item.tags.some((tag) => objTags?.includes(tag.name))
+                        )
+                        ?.filter((item) => (objCreated?.length > 0 ? objCreated?.includes(item.creatd_by_user) : !objCreated?.includes(item.created_by_user)))
+                        ?.filter((item) => objUsage !== null && item.used === objUsage);
+                    // ?.filter((item) => objType !== null && item.type === objType);
+                    // .filter((item) => (objStorage?.length > 0 ? objStorage?.includes(item.station.storage_type) : !objStorage?.includes(item.station.storage_type)));
                 }
                 dispatch({ type: 'SET_FILTERED_LIST', payload: data });
                 return;
@@ -284,10 +396,20 @@ const Filter = ({ filterComponent, height }) => {
     };
     const content = <CustomCollapse header="Details" data={filterState?.filterFields} cancel={handleCancel} apply={handleApply} clear={handleClear} />;
 
+    const getPlaceholder = () => {
+        switch (filterComponent) {
+            case 'stations':
+                return 'Search stations';
+            case 'schema':
+                return 'Search schema';
+            default:
+                return 'Search';
+        }
+    };
     return (
         <FilterStoreContext.Provider value={[filterState, filterDispatch]}>
             <SearchInput
-                placeholder="Search Stations"
+                placeholder={getPlaceholder()}
                 colorType="navy"
                 backgroundColorType="gray-dark"
                 width="288px"
